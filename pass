@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Student Report</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <h1>Student Report</h1>
+
+    <form id="add-student-form">
+      <label for="name">Name:</label>
+      <input type="text" id="name" name="name" required>
+      <br>
+      <label for="gender">Gender:</label>
+      <select id="gender" name="gender" required>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+        <option value="other">Other</option>
+      </select>
+      <br>
+      <label for="roll_number">Roll Number:</label>
+      <input type="text" id="roll_number" name="roll_number" required>
+      <br>
+      <label for="course">Course:</label>
+      <input type="text" id="course" name="course" required>
+      <br>
+      <label for="year">Year:</label>
+      <input type="number" id="year" name="year" required>
+      <br>
+      <input type="submit" value="Add Student">
+    </form>
+
+    <table id="student-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Gender</th>
+          <th>Roll Number</th>
+          <th>Course</th>
+          <th>Year</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+
+    <script src="app.js"></script>
+  </body>
+</html>
+
+
+
+h1 {
+  text-align: center;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+label {
+  margin-right: 1rem;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+  margin-bottom: 1rem;
+}
+
+input[type="submit"] {
+  margin-top: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+th,
+td {
+  padding: 0.5rem;
+  text-align: left;
+  vertical-align: top;
+  border-top: 1px solid #dee2e6;
+}
+
+th {
+  font-weight: bold;
+  background-color: #e9ecef;
+}
+
+tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+tr:hover {
+  background-color: #e2e6ea;
+}
+
+
+
+const form = document.getElementById('add-student-form');
+const table = document.getElementById('student-table');
+
+// Add event listener for form submit
+form.addEventListener('submit', (event) => {
+  event.preventDefault();
+
+  const name = event.target.elements.name.value;
+  const gender = event.target.elements.gender.value;
+  const rollNumber = event.target.elements.roll_number.value;
+  const course = event.target.elements.course.value;
+  const year = event.target.elements.year.value;
+
+  // Send a POST request to the server to add the student
+  fetch('/api/students', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name,
+      gender,
+      rollNumber,
+      course,
+      year
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    // Clear the form
+    form.reset();
+
+    // Add the new student to the table
+    const row = table.insertRow();
+    row.innerHTML = `
+      <td>${data.id}</td>
+      <td>${data.name}</td>
+      <td>${data.gender}</td>
+      <td>${data.rollNumber}</td>
+      <td>${data.course}</td>
+      <td>${data.year}</td>
+    `;
+  })
+  .catch(error => {
+    console.error(error);
+  });
+});
+
+// Retrieve the list of students from the server and display them in the table
+fetch('/api/students')
+  .then(response => response.json())
+  .then(data => {
+    data.forEach(student => {
+      const row = table.insertRow();
+      row.innerHTML = `
+        <td>${student.id}</td>
+        <td>${student.name}</td>
+        <td>${student.gender}</td>
+        <td>${student.rollNumber}</td>
+        <td>${student.course}</td>
+        <td>${student.year}</td>
+      `;
+    });
+  })
+  .catch(error => {
+    console.error(error);
+  });
+
+
+
+
+
+const express = require('express');
+const mysql = require('mysql');
+
+const app = express();
+app.use(express.json());
+
+const connection = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'mydb'
+});
+
+connection.connect((error) => {
+  if (error) {
+    console.error('Error connecting to MySQL:', error);
+  } else {
+    console.log('Connected to MySQL database');
+  }
+});
+
+// Add a new student to the database
+app.post('/api/students', (request, response) => {
+  const { name, gender, rollNumber, course, year } = request.body;
+
+  const query = `
+    INSERT INTO students (name, gender, roll_number, course, year)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  connection.query(query, [name, gender, rollNumber, course, year], (error, result) => {
+    if (error) {
+      console.error('Error adding student to database:', error);
+      response.status(500).send({ error: 'Error adding student to database' });
+    } else {
+      const id = result.insertId;
+      const student = { id, name, gender, rollNumber, course, year };
+      response.status(201).send(student);
+    }
+  });
+});
+
+// Retrieve a list of all students from the database
+app.get('/api/students', (request, response) => {
+  const query = 'SELECT * FROM students';
+
+  connection.query(query, (error, results) => {
+    if (error) {
+      console.error('Error retrieving students from database:', error);
+      response.status(500).send({ error: 'Error retrieving students from database' });
+    } else {
+      response.send(results);
+    }
+  });
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Server started on port ${port}`);
+});
+
+
+
+
+
+
+CREATE TABLE students (
+  id INT NOT NULL AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  gender VARCHAR(6) NOT NULL,
+  roll_number VARCHAR(20) NOT NULL,
+  course VARCHAR(50) NOT NULL,
+  year INT NOT NULL,
+  PRIMARY KEY (id)
+);
